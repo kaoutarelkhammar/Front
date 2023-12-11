@@ -22,15 +22,11 @@ export const navLinks = [
     title: "Products",
     link: "/products",
   },
-  {
-    id: "categories",
-    title: "Categories",
-    link: "/categories",
-  },
+ 
  
 ];
 
-function NavBar() {
+function NavBar({ onSearch }) {
   const [active, setActive] = useState("Home");
   const [toggle, setToggle] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);

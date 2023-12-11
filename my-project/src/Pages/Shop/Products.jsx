@@ -17,7 +17,6 @@ const sortOptions = [
   { name: "Price: Low to High", href: "#", current: false },
   { name: "Price: High to Low", href: "#", current: false },
 ];
-
 const subCategories = [
   { name: "Kitchen accessories", href: "#" },
   { name: "Vases and planters", href: "#" },
@@ -59,17 +58,19 @@ const Products = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [filteredItems, setFilteredItems] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(8);
-  const [menu, setMenu] = useState([]);
+  const [itemsPerPage] = useState(9);
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [sortOption, setSortOption] = useState("Most Popular");
 
+  const [searchQuery, setSearchQuery] = useState("");
+  
 
   const fetchCategories = async () => {
     try {
       const response = await fetch("http://localhost:3000/v1/categories");
       const categoryData = await response.json();
-      console.log("categoryData",categoryData);
+      console.log("categoryData", categoryData);
       setCategories(categoryData.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -80,30 +81,82 @@ const Products = () => {
     try {
       const response = await fetch("http://localhost:3000/v1/products");
       const data = await response.json();
-      setMenu(data);
+      setProducts(data);
       setFilteredItems(data); // Initially, display all items
     } catch (error) {
       console.error("Error fetching data:", error);
     }
   };
   useEffect(() => {
-
-    fetchData();
+    fetchData(searchQuery);
     fetchCategories();
   }, []);
+  // Callback function to handle search query from NavBar
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  };
 
-  const filterProductsByCategory = (categoryValue) => {
-    const filtered = menu.filter((item) => item.category === categoryValue);
+  // const filterProductsByCategory = (categoryValue) => {
+  //   const filtered = menu.filter((item) => item.category.toLowerCase() === categoryValue.toLowerCase());
+  //   setFilteredItems(sortItems(filtered, sortOption, false));
+  //   setCurrentPage(1);
+  // };
+  const filterProductsByCategory = (subcategory_id) => {
+    console.log("Clicked category ID:", subcategory_id); 
+    const filtered = products.filter(
+      (item) => item.subcategory_id === subcategory_id
+    );
     setFilteredItems(filtered);
+    setCurrentPage(1);
+    
   };
 
   console.log("filteredItems", filteredItems);
-  // Pagination logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  // New function for sorting items
+  const sortItems = (items, sortOption) => {
+    if (sortOption === "Most Popular") {
+      return [...items].sort((a, b) => a.popularity - b.popularity);
+    } else if (sortOption === "Best Rating") {
+      return [...items].sort((a, b) => a.rating - b.rating);
+    } else if (sortOption === "Newest") {
+      return [...items].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+    } else if (sortOption === "Price: Low to High") {
+      return [...items].sort((a, b) => a.price - b.price);
+    } else if (sortOption === "Price: High to Low") {
+      return [...items].sort((a, b) => b.price - a.price);
+    }
+    return items;
+  };
+
+  // Update the filtered items when the sort option changes
+  useEffect(() => {
+    setFilteredItems(sortItems(filteredItems, sortOption));
+  }, [sortOption]);
+
+  // // Pagination logic
+  // const paginate = (pageNumber) => {
+  //   setCurrentPage(pageNumber);
+  // };
+
+  // // Calculate the range of items to display on the current page
+  // const indexOfLastItem = currentPage * itemsPerPage;
+  // const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  // const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
+
+  const pageRange = 3;
+
+  const indexOfFirstItem = currentPage * itemsPerPage;
+  const indexOfLastItem = indexOfFirstItem + itemsPerPage;
+
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   // Search
   //   const [searchQuery, setSearchQuery] = useState('');
@@ -114,9 +167,17 @@ const Products = () => {
   //     onSearch(query); // Pass the query to the parent component for filtering
   //   };
 
+  const handleSortChange = (value) => {
+    if (value === "Sort by...") {
+      setSortOption("");
+    } else {
+      setSortOption(value);
+    }
+  };
+
   return (
     <>
-      <NavBar />
+      <NavBar onSearch={handleSearch} />
 
       {/* filter component */}
 
@@ -246,6 +307,33 @@ const Products = () => {
             </Dialog>
           </Transition.Root>
 
+          {/* Sort dropdown
+           <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center">
+              <FaFilter className="h-6 w-6 mr-2" />
+              <span>Sort by:</span>
+            </div>
+            <Disclosure>
+              {({ open }) => (
+                <>
+                  <Disclosure.Button className="flex items-center text-gray-400 hover:text-gray-500">
+                    <span>{sortOption}</span>
+                    <IoChevronDown className="h-5 w-5" />
+                  </Disclosure.Button>
+                  <Disclosure.Panel>
+                    <ul>
+                      {sortOptions.map((option) => (
+                        <li key={option.name} onClick={() => handleSortChange(option.name)}>
+                          {option.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </Disclosure.Panel>
+                </>
+              )}
+            </Disclosure>
+          </div> */}
+
           {/* desktop filter dialog */}
           <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex items-baseline justify-end pb-6 pt-20">
@@ -339,76 +427,71 @@ const Products = () => {
                   <ul
                     role="list"
                     className="space-y-4 border-b border-gray-200 pb-6 text-sm font-medium text-gray-900"
-                  >
-                    {Array.isArray(categories) &&
-                      categories.map((category) => (
-                        <li key={category._id}
-                        className=""
-                        // onClick={() =>
-                        //     filterProductsByCategory()
-                        //   }
-                        >
-                            {category.categoryName}
-                        </li>
-                      ))}
+                  >{categories.map((category) => (
+                    <li
+                      key={category._id}
+                      onClick={() => filterProductsByCategory(category.subcategory_id)}
+                    >
+                      {category.categoryName}
+                    </li>
+                  ))}
+
                   </ul>
 
-                
-                    <Disclosure
-                      as="div"
-                      
-                      className="border-b border-gray-200 py-6"
-                    >
-                      {({ open }) => (
-                        <>
-                          <h3 className="-my-3 flow-root">
-                            <Disclosure.Button className="flex w-full items-center justify-between bg-white py-3 text-sm text-gray-400 hover:text-gray-500">
-                              <span className="font-medium text-gray-900">
-                                Categories
-                              </span>
-                              <span className="ml-6 flex items-center">
-                                {open ? (
-                                  <FiMinus
-                                    className="h-5 w-5"
-                                    aria-hidden="true"
-                                  />
-                                ) : (
-                                  <FiPlus
-                                    className="h-5 w-5"
-                                    aria-hidden="true"
-                                  />
-                                )}
-                              </span>
-                            </Disclosure.Button>
-                          </h3>
-                          <Disclosure.Panel className="pt-6">
-                            <div className="space-y-4">
-                              {categories.map((option, optionIdx) => (
-                                <div
-                                  key={optionIdx}
-                                  className="flex items-center"
+                  <Disclosure
+                    as="div"
+                    className="border-b border-gray-200 py-6"
+                  >
+                    {({ open }) => (
+                      <>
+                        <h3 className="-my-3 flow-root">
+                          <Disclosure.Button className="flex w-full items-center justify-between bg-white py-3 text-sm text-gray-400 hover:text-gray-500">
+                            <span className="font-medium text-gray-900">
+                              Categories
+                            </span>
+                            <span className="ml-6 flex items-center">
+                              {open ? (
+                                <FiMinus
+                                  className="h-5 w-5"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <FiPlus
+                                  className="h-5 w-5"
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </span>
+                          </Disclosure.Button>
+                        </h3>
+                        <Disclosure.Panel className="pt-6">
+                          <div className="space-y-4">
+                            {categories.map((option, optionIdx) => (
+                              <div
+                                key={optionIdx}
+                                className="flex items-center"
+                              >
+                                <input
+                                  id={`filter-${optionIdx}`}
+                                  name={`${option._id}`}
+                                  defaultValue={option._id}
+                                  type="checkbox"
+                                  // defaultChecked={option.checked}
+                                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <label
+                                  htmlFor={`filter-${optionIdx}`}
+                                  className="ml-3 text-sm text-gray-600"
                                 >
-                                  <input
-                                    id={`filter-${optionIdx}`}
-                                    name={`${option._id}`}
-                                    defaultValue={option._id}
-                                    type="checkbox"
-                                    // defaultChecked={option.checked}
-                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                  />
-                                  <label
-                                    htmlFor={`filter-${optionIdx}`}
-                                    className="ml-3 text-sm text-gray-600"
-                                  >
-                                    {option.categoryName}
-                                  </label>
-                                </div>
-                              ))}
-                            </div>
-                          </Disclosure.Panel>
-                        </>
-                      )}
-                    </Disclosure>
+                                  {option.categoryName}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </Disclosure.Panel>
+                      </>
+                    )}
+                  </Disclosure>
                 </form>
 
                 {/* Product grid */}
@@ -420,25 +503,20 @@ const Products = () => {
                   </div>
                 </div>
 
-                {/* Pagination */}
-                <div className="flex my-8 ">
-                  {Array.from({
-                    length: Math.ceil(filteredItems.length / itemsPerPage),
-                  }).map((_, index) => (
-                    <button
-                      key={index + 1}
-                      onClick={() => paginate(index + 1)}
-                      className={`mx-1 px-3 py-1 rounded-full ${
-                        currentPage === index + 1
-                          ? "bg-green text-white"
-                          : "bg-gray-200"
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </div>
+               
               </div>
+               {/* Pagination */}
+               <div className="join flex justify-center w-[100%]">
+               {Array.from({ length: pageRange }).map((_, index) => (
+          <button
+            key={index + 1}
+            onClick={() => handlePageChange(index + 1)}
+            className={`mx-1 px-3 py-1 rounded-full ${currentPage === index + 1 ? "bg-green text-white" : "bg-gray-200"}`}
+          >
+            {index + 1}
+          </button>
+        ))}
+                </div>
             </section>
           </main>
         </div>

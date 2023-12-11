@@ -10,6 +10,7 @@ export default {
     extend: {
       colors: {
         customColor: '#CBAFA4',
+        customColorHover: '#E3CFC7',
         backgroundColor: '#FFFCF9'
       },
         fontFamily:{
